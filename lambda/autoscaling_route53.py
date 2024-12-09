@@ -132,6 +132,8 @@ def handle_dns_action(instance_id, hostname, action):
         # Prepare the changes batch
         change_batch = {"Comment": f"{action} record for {hostname}", "Changes": []}
 
+        logger.info(f"Action: {action}, Existing records: {existing_records}")
+
         # Check if the action is DELETE and the record exists
         if action == "DELETE":
             record_exists = False
