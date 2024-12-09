@@ -167,6 +167,9 @@ def handle_dns_action(instance_id, hostname, action):
                 if record["Name"] == hostname and record["Type"] == "A":
                     record_exists = True
                     # Add the new IP to existing records if it doesn't already exist
+                    logger.info(
+                        f"Checking if {private_ip} is in existing record {record['ResourceRecords']}"
+                    )
                     if not any(
                         r["Value"] == private_ip for r in record["ResourceRecords"]
                     ):
@@ -178,6 +181,7 @@ def handle_dns_action(instance_id, hostname, action):
 
             # Only create the record if it doesn't exist
             if not record_exists:
+                logger.info(f"Record for {hostname} does not exist, creating new one.")
                 change_batch["Changes"].append(
                     {
                         "Action": "CREATE",
