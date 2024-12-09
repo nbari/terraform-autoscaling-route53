@@ -124,28 +124,50 @@ def handle_dns_action(instance_id, hostname, action):
             hostname = f"{hostname}.{zone_name}"
         logger.info(f"Fully qualified hostname: {hostname}")
 
-        # Use hostname directly and apply the global TTL
-        change_batch = {
-            "Comment": f"{action} record for {hostname}",
-            "Changes": [
+        # Fetch existing records for the hostname
+        existing_records = route53.list_resource_record_sets(
+            HostedZoneId=HOSTED_ZONE_ID, StartRecordName=hostname, StartRecordType="A"
+        )
+
+        # Prepare the changes batch
+        change_batch = {"Comment": f"{action} record for {hostname}", "Changes": []}
+
+        # Check if the record exists
+        record_exists = False
+        for record in existing_records["ResourceRecordSets"]:
+            if record["Name"] == hostname and record["Type"] == "A":
+                record_exists = True
+                # Add the new IP to existing records if it doesn't already exist
+                if not any(r["Value"] == private_ip for r in record["ResourceRecords"]):
+                    record["ResourceRecords"].append({"Value": private_ip})
+                    change_batch["Changes"].append(
+                        {"Action": "UPSERT", "ResourceRecordSet": record}
+                    )
+                break
+
+        if not record_exists:
+            # If the record doesn't exist, create it
+            change_batch["Changes"].append(
                 {
-                    "Action": action,
+                    "Action": "CREATE",
                     "ResourceRecordSet": {
-                        "Name": hostname,  # Directly using hostname
+                        "Name": hostname,
                         "Type": "A",
                         "TTL": TTL,  # Use the globally defined TTL variable
                         "ResourceRecords": [{"Value": private_ip}],
                     },
                 }
-            ],
-        }
+            )
 
-        # Update Route 53
-        logger.info(f"Updating Route 53: {change_batch}")
-        response = route53.change_resource_record_sets(
-            HostedZoneId=HOSTED_ZONE_ID, ChangeBatch=change_batch
-        )
-        logger.info(f"Route 53 response: {response}")
+        # Update Route 53 if there are changes
+        if change_batch["Changes"]:
+            logger.info(f"Updating Route 53: {change_batch}")
+            response = route53.change_resource_record_sets(
+                HostedZoneId=HOSTED_ZONE_ID, ChangeBatch=change_batch
+            )
+            logger.info(f"Route 53 response: {response}")
+        else:
+            logger.info(f"No changes needed for {hostname}.")
 
     except Exception as e:
         logger.error(
