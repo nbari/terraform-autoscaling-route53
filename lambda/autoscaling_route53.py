@@ -123,11 +123,13 @@ def handle_dns_action(instance_id, hostname, action):
 
         # Prepare the changes batch
         change_batch = {"Comment": f"{action} record for {hostname}", "Changes": []}
-        logger.info(f"Action: {action}, Existing records: {existing_records}")
+        logger.info(
+            f"Action: {action}, Private IP: {private_ip} Existing records: {existing_records}"
+        )
 
         # Handle based on the action type
         if action == "DELETE":
-            handle_delete_action(existing_records, hostname, change_batch)
+            handle_delete_action(existing_records, hostname, private_ip, change_batch)
         elif action == "CREATE":
             handle_create_action(existing_records, hostname, private_ip, change_batch)
         elif action == "UPSERT":
@@ -172,22 +174,34 @@ def get_fully_qualified_hostname(hostname, zone_name):
     return hostname
 
 
-def handle_delete_action(existing_records, hostname, change_batch):
+def handle_delete_action(existing_records, hostname, private_ip, change_batch):
     record_exists = False
     for record in existing_records["ResourceRecordSets"]:
         if record["Name"] == hostname and record["Type"] == "A":
             record_exists = True
-            # Proceed to delete the record
-            change_batch["Changes"].append(
-                {
-                    "Action": "DELETE",
-                    "ResourceRecordSet": {
-                        "Name": hostname,
-                        "Type": "A",
-                        "ResourceRecords": record["ResourceRecords"],
-                    },
-                }
-            )
+            # Check if the private IP exists in the record
+            updated_records = [
+                r for r in record["ResourceRecords"] if r["Value"] != private_ip
+            ]
+
+            # Only delete the record if there are no remaining IPs
+            if len(updated_records) == 0:
+                change_batch["Changes"].append(
+                    {
+                        "Action": "DELETE",
+                        "ResourceRecordSet": {
+                            "Name": hostname,
+                            "Type": "A",
+                            "ResourceRecords": record["ResourceRecords"],
+                        },
+                    }
+                )
+            else:
+                # If there are remaining IPs, update the record
+                record["ResourceRecords"] = updated_records
+                change_batch["Changes"].append(
+                    {"Action": "UPSERT", "ResourceRecordSet": record}
+                )
             break
 
     if not record_exists:
