@@ -69,7 +69,7 @@ resource "aws_autoscaling_lifecycle_hook" "hook-launching" {
   name                    = "lifecycle-launching"
   autoscaling_group_name  = var.name # <-- the name of your autoscaling group
   lifecycle_transition    = "autoscaling:EC2_INSTANCE_LAUNCHING"
-  default_result          = CONTINUE
+  default_result          = "CONTINUE"
   heartbeat_timeout       = 60
   notification_target_arn = data.terraform_remote_state.vpc.outputs.autoscaling-route53.sns_topic_arn
   role_arn                = data.terraform_remote_state.vpc.outputs.autoscaling-route53.lifecycle_iam_role_arn
@@ -81,7 +81,7 @@ resource "aws_autoscaling_lifecycle_hook" "hook-terminating" {
   name                    = "lifecycle-terminating"
   autoscaling_group_name  = var.name # <-- the name of your autoscaling group
   lifecycle_transition    = "autoscaling:EC2_INSTANCE_TERMINATING"
-  default_result          = CONTINUE
+  default_result          = "CONTINUE"
   heartbeat_timeout       = 60
   notification_target_arn = data.terraform_remote_state.vpc.outputs.autoscaling-route53.sns_topic_arn
   role_arn                = data.terraform_remote_state.vpc.outputs.autoscaling-route53.lifecycle_iam_role_arn
