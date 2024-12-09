@@ -132,32 +132,62 @@ def handle_dns_action(instance_id, hostname, action):
         # Prepare the changes batch
         change_batch = {"Comment": f"{action} record for {hostname}", "Changes": []}
 
-        # Check if the record exists
-        record_exists = False
-        for record in existing_records["ResourceRecordSets"]:
-            if record["Name"] == hostname and record["Type"] == "A":
-                record_exists = True
-                # Add the new IP to existing records if it doesn't already exist
-                if not any(r["Value"] == private_ip for r in record["ResourceRecords"]):
-                    record["ResourceRecords"].append({"Value": private_ip})
+        # Check if the action is DELETE and the record exists
+        if action == "DELETE":
+            record_exists = False
+            for record in existing_records["ResourceRecordSets"]:
+                if record["Name"] == hostname and record["Type"] == "A":
+                    record_exists = True
+                    # Proceed to delete the record
                     change_batch["Changes"].append(
-                        {"Action": "UPSERT", "ResourceRecordSet": record}
+                        {
+                            "Action": "DELETE",
+                            "ResourceRecordSet": {
+                                "Name": hostname,
+                                "Type": "A",
+                                "TTL": TTL,  # Ensure TTL is consistent
+                                "ResourceRecords": record["ResourceRecords"],
+                            },
+                        }
                     )
-                break
+                    break
 
-        # Only create the record if it doesn't exist
-        if not record_exists:
-            change_batch["Changes"].append(
-                {
-                    "Action": "CREATE",
-                    "ResourceRecordSet": {
-                        "Name": hostname,
-                        "Type": "A",
-                        "TTL": TTL,  # Use the globally defined TTL variable
-                        "ResourceRecords": [{"Value": private_ip}],
-                    },
-                }
-            )
+            if not record_exists:
+                logger.info(
+                    f"DNS record for {hostname} does not exist, skipping DELETE."
+                )
+                return  # Skip if the record doesn't exist
+
+        # If action is CREATE or UPSERT, handle it
+        elif action == "CREATE":
+            # Check if the record already exists to prevent duplicate entries
+            record_exists = False
+            for record in existing_records["ResourceRecordSets"]:
+                if record["Name"] == hostname and record["Type"] == "A":
+                    record_exists = True
+                    # Add the new IP to existing records if it doesn't already exist
+                    if not any(
+                        r["Value"] == private_ip for r in record["ResourceRecords"]
+                    ):
+                        record["ResourceRecords"].append({"Value": private_ip})
+                        change_batch["Changes"].append(
+                            {"Action": "UPSERT", "ResourceRecordSet": record}
+                        )
+                    break
+
+            # Only create the record if it doesn't exist
+            if not record_exists:
+                change_batch["Changes"].append(
+                    {
+                        "Action": "CREATE",
+                        "ResourceRecordSet": {
+                            "Name": hostname,
+                            "Type": "A",
+                            "TTL": TTL,  # Use the globally defined TTL variable
+                            "ResourceRecords": [{"Value": private_ip}],
+                        },
+                    }
+                )
 
         # Update Route 53 if there are changes
         if change_batch["Changes"]:
