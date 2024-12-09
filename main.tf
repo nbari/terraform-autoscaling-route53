@@ -115,8 +115,9 @@ resource "aws_lambda_function" "autoscaling_route53" {
   description      = "Handles DNS for autoscaling groups by receiving autoscaling notifications and setting/deleting records from route53"
   environment {
     variables = {
-      "TTL"     = var.ttl
-      "ZONE_ID" = var.zone_id
+      "TTL"       = var.ttl
+      "ZONE_ID"   = var.zone_id
+      "LOG_LEVEL" = var.log_level
     }
   }
 }
