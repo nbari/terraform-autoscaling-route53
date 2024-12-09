@@ -122,6 +122,11 @@ def handle_dns_action(instance_id, hostname, action):
 
         if not hostname.endswith(zone_name):
             hostname = f"{hostname}.{zone_name}"
+
+            # Ensure the hostname is fully qualified with a trailing dot
+        if not hostname.endswith("."):
+            hostname = f"{hostname}."
+
         logger.info(f"Fully qualified hostname: {hostname}")
 
         # Fetch existing records for the hostname
