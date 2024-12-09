@@ -145,8 +145,8 @@ def handle_dns_action(instance_id, hostname, action):
                     )
                 break
 
+        # Only create the record if it doesn't exist
         if not record_exists:
-            # If the record doesn't exist, create it
             change_batch["Changes"].append(
                 {
                     "Action": "CREATE",
