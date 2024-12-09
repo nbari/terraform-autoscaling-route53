@@ -147,7 +147,6 @@ def handle_dns_action(instance_id, hostname, action):
                             "ResourceRecordSet": {
                                 "Name": hostname,
                                 "Type": "A",
-                                "TTL": TTL,  # Ensure TTL is consistent
                                 "ResourceRecords": record["ResourceRecords"],
                             },
                         }
