@@ -14,3 +14,9 @@ variable "ttl" {
   type        = number
   default     = 60
 }
+
+variable "log_level" {
+  description = "Log level"
+  type        = string
+  default     = "ERROR"
+}
